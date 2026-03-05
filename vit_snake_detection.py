@@ -40,7 +40,7 @@ except Exception:
     from sklearn.neighbors import NearestNeighbors
 
 
-DEFAULT_CSV_PATH = r"D:\snakebite_project\data\annotations\image_metadata.csv"
+DEFAULT_CSV_PATH =  r"D:\snakebite_project2\snakebite_project\data\annotations\image_metadata.csv"
 EMBEDDING_FILE = "snake_embeddings.npz"    
 FAISS_INDEX_FILE = "snake_faiss.index"
 SKLEARN_INDEX_FILE = "snake_sklearn_index.npy"  

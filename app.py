@@ -2,11 +2,10 @@ import os
 import shutil
 import uuid
 import logging
-# FOR NORMAL STABLE USAGE, RUN: .\start_app.ps1
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -34,6 +33,7 @@ try:
         DEFAULT_CSV_PATH,
         EMBEDDING_FILE
     )
+    logger.info("Backend modules imported successfully.")
 except ImportError as e:
     logger.error(f"Could not import backend modules: {e}")
     raise RuntimeError(f"Could not import backend modules: {e}")
@@ -43,44 +43,40 @@ ml_resources = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Load ML models and resources on startup.
-    Clean them up on shutdown.
-    """
     logger.info("Starting up: Loading ViT model and index...")
     try:
         processor, model = load_vit_model()
-        # Ensure embedding file exists or warn
+
         if not os.path.exists(EMBEDDING_FILE):
-             logger.warning(f"Embedding file '{EMBEDDING_FILE}' not found. Predictions might fail.")
-             index, embeddings, meta = None, None, None
+            logger.warning(f"Embedding file '{EMBEDDING_FILE}' not found. /predict will fail.")
+            index, embeddings, meta = None, None, None
         else:
-             index, embeddings, meta = load_index_and_meta(EMBEDDING_FILE)
-        
+            logger.info(f"Loading embeddings from: {EMBEDDING_FILE}")
+            index, embeddings, meta = load_index_and_meta(EMBEDDING_FILE)
+            logger.info(f"Index loaded. Meta keys: {list(meta.keys()) if meta else 'None'}")
+
         ml_resources["processor"] = processor
         ml_resources["model"] = model
         ml_resources["index"] = index
         ml_resources["meta"] = meta
         logger.info("ViT model and index loaded successfully!")
+
     except Exception as e:
-        logger.error(f"Error during startup resource loading: {e}")
-        # In a real app, we might want to shut down if the model fails to load
-        # but for this project we'll allow startup so /health works.
-    
+        logger.error(f"Startup error: {e}", exc_info=True)
+
     yield
-    
-    # Cleanup
+
     ml_resources.clear()
     logger.info("Shutting down... resources cleared.")
+
 
 app = FastAPI(
     title="Snake Bite Detection API",
     description="API for identifying snake species from images using ViT.",
-    version="1.1.0",
+    version="1.2.0",
     lifespan=lifespan
 )
 
-# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -89,23 +85,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configuration
 UPLOAD_DIR = "static/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs("static", exist_ok=True)
 
-# Mount Static Files (Frontend)
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# Ensure static directory exists
-os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 async def read_index():
     return FileResponse("static/index.html")
 
-# Pydantic Models
+
+# ── Pydantic Models ──────────────────────────────────────────────────────────
+
 class PredictionResponse(BaseModel):
     species_name: str
     venom_type: str
@@ -118,44 +113,76 @@ class PredictionResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    model_loaded: bool
+    index_loaded: bool
+    csv_exists: bool
+    embedding_file_exists: bool
 
-# Endpoints
+
+# ── ENDPOINTS ────────────────────────────────────────────────────────────────
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "model_loaded": ml_resources.get("model") is not None,
+        "index_loaded": ml_resources.get("index") is not None,
+        "csv_exists": os.path.exists(DEFAULT_CSV_PATH),
+        "embedding_file_exists": os.path.exists(EMBEDDING_FILE),
+    }
+
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(image: UploadFile = File(...)):
     """
     Predict snake species from an uploaded image.
+    Accepts field name 'image' (multipart/form-data).
     """
-    if not image.filename:
-        raise HTTPException(status_code=400, detail="No file selected")
-    
-    # Validate content type
-    if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
-        raise HTTPException(status_code=400, detail="Invalid image type. Only JPEG/PNG allowed.")
+    logger.info(f"Predict called — filename={image.filename}, content_type={image.content_type}")
 
-    # Generate unique filename
-    file_ext = image.filename.split(".")[-1]
+    # ── Validate ──
+    if not image.filename:
+        raise HTTPException(status_code=400, detail="No file selected.")
+
+    allowed_types = ["image/jpeg", "image/png", "image/jpg", "image/webp", "application/octet-stream"]
+    if image.content_type not in allowed_types:
+        logger.warning(f"Rejected content_type: {image.content_type}")
+        raise HTTPException(status_code=400, detail=f"Invalid image type '{image.content_type}'. Use JPEG or PNG.")
+
+    # ── Check resources ──
+    if ml_resources.get("model") is None:
+        logger.error("Model not loaded in ml_resources.")
+        raise HTTPException(status_code=500, detail="Model not loaded. Check server logs.")
+
+    if ml_resources.get("index") is None:
+        logger.error("Index not loaded — embedding file may be missing.")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Embedding index not loaded. "
+                f"Run: python vit_snake_detection.py --build-index --csv \"{DEFAULT_CSV_PATH}\" "
+                "to generate the index first."
+            )
+        )
+
+    if not os.path.exists(DEFAULT_CSV_PATH):
+        logger.error(f"CSV not found at: {DEFAULT_CSV_PATH}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Metadata CSV not found at: {DEFAULT_CSV_PATH}"
+        )
+
+    # ── Save temp file ──
+    file_ext = (image.filename.split(".")[-1] if "." in image.filename else "jpg")
     filename = f"{uuid.uuid4().hex}.{file_ext}"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
     try:
-        # Save file temporarily
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(image.file, buffer)
-        
-        # Check if model is loaded
-        if not ml_resources.get("model") or not ml_resources.get("index"):
-             logger.error("Predict called but model/index not loaded.")
-             raise HTTPException(
-                 status_code=500, 
-                 detail="Model not loaded. Please check server logs."
-             )
+        with open(file_path, "wb") as buf:
+            shutil.copyfileobj(image.file, buf)
+        logger.info(f"Image saved: {file_path} ({os.path.getsize(file_path)} bytes)")
 
-        # Run prediction
+        # ── Run prediction ──
         results = predict_one_image(
             image_path=file_path,
             processor=ml_resources["processor"],
@@ -167,77 +194,74 @@ async def predict(image: UploadFile = File(...)):
         )
 
         if not results:
-            raise HTTPException(status_code=500, detail="No prediction returned from backend.")
+            raise HTTPException(status_code=500, detail="No prediction returned.")
 
-        top_match = results[0]
+        top = results[0]
+        logger.info(f"Prediction result: {top.get('species_name')} | score={top.get('similarity_score'):.4f}")
 
-        # Map backend result to response model
-        response = PredictionResponse(
-            species_name=top_match.get("species_name", "Unknown"),
-            venom_type=top_match.get("venom_type", "Unknown"),
-            symptoms=top_match.get("symptoms", "Not available"),
-            reaction_stage=top_match.get("reaction_stage", "Not available"),
-            severity_level=top_match.get("severity_level", "Unknown"),
-            first_aid=top_match.get("first_aid", "Not available"),
-            hospital_importance=top_match.get("hospital_importance", "Not specified"),
-            similarity_score=top_match.get("similarity_score", 0.0)
+        return PredictionResponse(
+            species_name=top.get("species_name", "Unknown"),
+            venom_type=top.get("venom_type", "Unknown"),
+            symptoms=top.get("symptoms", "Not available"),
+            reaction_stage=top.get("reaction_stage", "Not available"),
+            severity_level=top.get("severity_level", "Unknown"),
+            first_aid=top.get("first_aid", "Not available"),
+            hospital_importance=top.get("hospital_importance", "Not specified"),
+            similarity_score=float(top.get("similarity_score", 0.0))
         )
-        
-        return response
 
-    except HTTPException as he:
-        raise he
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.exception("Prediction error")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        logger.exception(f"Prediction error: {e}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
     finally:
-        # Clean up uploaded file
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
-            except Exception as e:
-                logger.warning(f"Failed to delete temporary file {file_path}: {e}")
+            except Exception:
+                pass
 
-    import uvicorn
-    # ── NEW ENDPOINT: /chat ───────────────────────────────────────────────────────
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """
-    Snakebite emergency chatbot.
-    Accepts natural language queries, returns structured medical guidance.
-    """
     if not request.message or not request.message.strip():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Message cannot be empty."
-        )
+        raise HTTPException(status_code=422, detail="Message cannot be empty.")
     if len(request.message) > 1000:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Message too long (max 1000 characters)."
-        )
+        raise HTTPException(status_code=422, detail="Message too long (max 1000 chars).")
     try:
-        response = process_chat(request)
-        return response
+        return process_chat(request)
     except Exception as e:
         logger.exception("Chatbot error")
         raise HTTPException(status_code=500, detail=f"Chatbot error: {str(e)}")
 
 
-# ── NEW ENDPOINT: /nearby-hospitals ───────────────────────────────────────────
 @app.post("/nearby-hospitals", response_model=HospitalResponse)
 async def nearby_hospitals(request: HospitalRequest):
-    """
-    Find hospitals near given GPS coordinates.
-    Uses OpenStreetMap (free) by default, or Google Places if provider='google'.
-    """
     try:
-        result = await find_nearby_hospitals(request)
-        return result
+        return await find_nearby_hospitals(request)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception("Hospital finder error")
         raise HTTPException(status_code=500, detail=f"Hospital search failed: {str(e)}")
-   
 
+
+# ── Debug endpoint — helps diagnose predict issues ───────────────────────────
+@app.get("/debug")
+async def debug_info():
+    """Check all paths and resource states."""
+    return {
+        "cwd": os.getcwd(),
+        "embedding_file": EMBEDDING_FILE,
+        "embedding_exists": os.path.exists(EMBEDDING_FILE),
+        "csv_path": DEFAULT_CSV_PATH,
+        "csv_exists": os.path.exists(DEFAULT_CSV_PATH),
+        "upload_dir": UPLOAD_DIR,
+        "upload_dir_exists": os.path.exists(UPLOAD_DIR),
+        "model_loaded": ml_resources.get("model") is not None,
+        "index_loaded": ml_resources.get("index") is not None,
+        "meta_keys": list(ml_resources["meta"].keys()) if ml_resources.get("meta") else None,
+        "static_dir_exists": os.path.exists("static"),
+        "index_html_exists": os.path.exists("static/index.html"),
+    }

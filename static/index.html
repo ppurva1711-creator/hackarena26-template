@@ -1,543 +1,751 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SnakeGuard AI - Image Detection</title>
-    <style>
-        :root {
-            --primary: #10b981;
-            --primary-dark: #059669;
-            --secondary: #3b82f6;
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-        }
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SnakeGuard AI - Image Detection</title>
+  <style>
+    :root {
+      --primary:#10b981; --primary-dark:#059669; --secondary:#3b82f6;
+      --bg:#0f172a; --card-bg:#1e293b; --card-bg2:#162032;
+      --text-main:#f8fafc; --text-muted:#94a3b8;
+      --border:rgba(255,255,255,0.07);
+      --red:#f87171; --yellow:#fbbf24;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;}
+    body{background:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
+    /* NAV */
+    header{background:rgba(15,23,42,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:1.2rem 2rem;position:sticky;top:0;z-index:100;}
+    .nav-content{max-width:1400px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;}
+    .logo{font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,var(--primary),var(--secondary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:.5rem;}
+    .nav-tabs{display:flex;gap:.5rem;}
+    .tab-btn{padding:.5rem 1.2rem;border-radius:9999px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:.875rem;font-weight:500;cursor:pointer;transition:all .2s;}
+    .tab-btn.active,.tab-btn:hover{background:rgba(16,185,129,.15);border-color:var(--primary);color:var(--primary);}
 
-        body {
-            background-color: var(--bg);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+    /* LAYOUT */
+    main{flex:1;max-width:1400px;margin:0 auto;padding:2rem;width:100%;}
+    .page{display:none;} .page.active{display:block;}
 
-        header {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 1.5rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 50;
-        }
+    /* DETECT GRID */
+    .detect-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;}
+    @media(max-width:900px){.detect-grid{grid-template-columns:1fr;}}
 
-        .nav-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    /* CARDS */
+    .card{background:var(--card-bg);border-radius:1.5rem;padding:1.75rem;border:1px solid var(--border);box-shadow:0 20px 40px -12px rgba(0,0,0,.3);}
+    .card-title{font-size:1.2rem;font-weight:700;margin-bottom:.3rem;}
+    .card-sub{color:var(--text-muted);font-size:.875rem;margin-bottom:1.25rem;}
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
+    /* DROP ZONE */
+    .drop-zone{width:100%;height:260px;border:2px dashed rgba(255,255,255,.1);border-radius:1rem;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;}
+    .drop-zone:hover{border-color:var(--primary);background:rgba(16,185,129,.05);}
+    .drop-zone.active{border-color:var(--primary);background:rgba(16,185,129,.1);}
+    .drop-zone img{max-width:100%;max-height:100%;object-fit:contain;display:none;}
+    .dzc{pointer-events:none;color:var(--text-muted);text-align:center;}
+    #videoContainer{width:100%;height:260px;border-radius:1rem;overflow:hidden;background:#000;display:none;}
+    #cameraStream{width:100%;height:100%;object-fit:cover;}
 
-        main {
-            flex: 1;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-            width: 100%;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 2rem;
-        }
+    /* BUTTONS */
+    .btn{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:.7rem 1.6rem;border-radius:9999px;border:none;font-weight:600;font-size:.9rem;cursor:pointer;transition:all .3s;box-shadow:0 4px 12px rgba(16,185,129,.2);}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(16,185,129,.3);}
+    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+    .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-main);padding:.7rem 1.6rem;border-radius:9999px;font-weight:500;font-size:.875rem;cursor:pointer;transition:all .2s;}
+    .btn-outline:hover{border-color:var(--primary);color:var(--primary);}
+    .btn-danger{background:#ef4444;color:#fff;padding:.7rem 1.4rem;border-radius:9999px;border:none;font-weight:600;cursor:pointer;}
+    .btn-row{display:flex;gap:.75rem;margin-top:1rem;flex-wrap:wrap;}
+    .btn-sm{padding:.4rem 1rem;font-size:.78rem;}
 
-        @media (min-width: 1024px) {
-            main {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
+    /* LOADER */
+    .loader{display:none;width:38px;height:38px;border:4px solid rgba(255,255,255,.08);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:1rem auto;}
+    @keyframes spin{to{transform:rotate(360deg);}}
 
-        .upload-card {
-            background: var(--card-bg);
-            border-radius: 1.5rem;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            align-items: center;
-            text-align: center;
-        }
+    /* RESULTS */
+    .results-card{display:none;}
+    .results-card.show{display:block;}
+    .sim-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .75rem;border-radius:9999px;font-size:.78rem;font-weight:600;background:rgba(59,130,246,.12);color:#60a5fa;margin-bottom:.9rem;}
+    .species-name{font-size:1.5rem;font-weight:700;margin-bottom:.2rem;}
+    .venom-badge{font-size:.9rem;font-weight:600;margin-bottom:1.1rem;}
+    .sev-banner{border-radius:.75rem;padding:.7rem 1rem;margin-bottom:1.1rem;font-weight:600;font-size:.85rem;display:flex;align-items:center;gap:.5rem;}
+    .sev-crit{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red);}
+    .sev-mod{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);color:var(--yellow);}
+    .sev-low{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;}
+    .info-grid{display:grid;gap:.9rem;}
+    .info-item{display:flex;flex-direction:column;gap:.2rem;}
+    .lbl{color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;}
+    .val{font-size:.9rem;font-weight:500;line-height:1.5;}
+    .val-danger{color:var(--red);} .val-safe{color:#34d399;}
 
-        .drop-zone {
-            width: 100%;
-            height: 300px;
-            border: 2px dashed rgba(255, 255, 255, 0.1);
-            border-radius: 1rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
+    /* HOSPITAL CARD */
+    .hosp-card{display:none;margin-top:1.5rem;}
+    .hosp-card.show{display:block;}
+    .hosp-inner{background:var(--card-bg);border-radius:1.5rem;padding:1.75rem;border:1px solid var(--border);}
+    .hosp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.5rem;}
+    .hosp-title{font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:.5rem;}
+    .gps-pill{font-size:.72rem;padding:.25rem .7rem;border-radius:9999px;font-weight:600;}
+    .gps-ok{background:rgba(52,211,153,.1);color:#34d399;border:1px solid rgba(52,211,153,.25);}
+    .gps-err{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.25);}
+    .gps-wait{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.25);}
+    .hosp-list{display:flex;flex-direction:column;gap:.7rem;}
+    .hosp-item{background:var(--card-bg2);border-radius:1rem;padding:.9rem 1.1rem;border:1px solid var(--border);display:flex;align-items:flex-start;gap:.9rem;transition:border-color .2s;}
+    .hosp-item:hover{border-color:rgba(16,185,129,.3);}
+    .hosp-rank{width:26px;height:26px;border-radius:50%;background:rgba(16,185,129,.12);color:var(--primary);font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem;}
+    .hosp-info{flex:1;}
+    .hosp-name{font-weight:600;font-size:.9rem;margin-bottom:.2rem;}
+    .hosp-addr{color:var(--text-muted);font-size:.78rem;margin-bottom:.3rem;}
+    .hosp-meta{display:flex;gap:.5rem;flex-wrap:wrap;}
+    .htag{font-size:.72rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(255,255,255,.05);color:var(--text-muted);}
+    .htag-em{background:rgba(248,113,113,.08);color:var(--red);}
+    .hosp-dist{font-size:.8rem;font-weight:700;color:var(--primary);white-space:nowrap;}
+    .hosp-phone{font-size:.75rem;color:var(--text-muted);margin-top:.2rem;}
+    .hosp-empty{text-align:center;padding:2rem;color:var(--text-muted);font-size:.875rem;}
+    .hosp-loader{text-align:center;padding:1.5rem;}
 
-        .drop-zone:hover {
-            border-color: var(--primary);
-            background: rgba(16, 185, 129, 0.05);
-        }
+    /* PLACEHOLDER */
+    .placeholder-card{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1rem;min-height:300px;}
 
-        .drop-zone.active {
-            border-color: var(--primary);
-            background: rgba(16, 185, 129, 0.1);
-        }
+    /* CHATBOT PAGE */
+    .chat-layout{max-width:780px;margin:0 auto;}
+    .chat-intro{text-align:center;margin-bottom:1.75rem;}
+    .chat-intro h2{font-size:1.6rem;font-weight:700;margin-bottom:.4rem;}
+    .chat-intro p{color:var(--text-muted);font-size:.9rem;}
+    .emerg-strip{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:1rem;padding:.8rem 1.1rem;display:flex;align-items:center;gap:.7rem;font-size:.83rem;margin-bottom:1.5rem;}
+    .emerg-strip strong{color:var(--red);}
 
-        .drop-zone img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            display: none;
-            z-index: 10;
-        }
+    .chat-win{background:var(--card-bg);border-radius:1.5rem;border:1px solid var(--border);min-height:440px;max-height:520px;overflow-y:auto;padding:1.4rem;display:flex;flex-direction:column;gap:.9rem;scroll-behavior:smooth;}
+    .chat-win::-webkit-scrollbar{width:4px;} .chat-win::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
-        .drop-zone-content {
-            pointer-events: none;
-            color: var(--text-muted);
-        }
+    .msg-bot{display:flex;gap:.7rem;align-items:flex-start;}
+    .bot-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;}
+    .bot-bubble{background:var(--card-bg2);border-radius:0 1rem 1rem 1rem;padding:.8rem 1rem;max-width:88%;border:1px solid var(--border);font-size:.875rem;line-height:1.6;}
+    .bot-bubble strong{color:var(--primary);}
 
-        #videoContainer {
-            width: 100%;
-            height: 300px;
-            border-radius: 1rem;
-            overflow: hidden;
-            background: #000;
-            display: none;
-            position: relative;
-        }
+    .msg-user{display:flex;justify-content:flex-end;}
+    .user-bubble{background:linear-gradient(135deg,rgba(16,185,129,.18),rgba(59,130,246,.12));border:1px solid rgba(16,185,129,.22);border-radius:1rem 0 1rem 1rem;padding:.8rem 1rem;max-width:75%;font-size:.875rem;line-height:1.6;}
 
-        #cameraStream {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+    .opts-grid{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.7rem;}
+    .opt-btn{padding:.45rem .95rem;border-radius:9999px;border:1px solid rgba(16,185,129,.28);background:rgba(16,185,129,.07);color:var(--primary);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit;}
+    .opt-btn:hover{background:rgba(16,185,129,.18);border-color:var(--primary);transform:translateY(-1px);}
+    .opt-btn:disabled{opacity:.35;cursor:not-allowed;transform:none;}
 
-        .camera-controls {
-            display: none;
-            width: 100%;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
+    .isec{margin-top:.65rem;}
+    .isec-title{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.35rem;font-weight:600;}
+    .ilist{list-style:none;display:flex;flex-direction:column;gap:.25rem;}
+    .ilist li{display:flex;gap:.45rem;font-size:.83rem;line-height:1.5;}
+    .ilist li::before{content:'•';color:var(--primary);flex-shrink:0;}
+    .ilist li.d::before{color:var(--red);}
+    .ilist li.s::before{color:#34d399;}
 
-        .btn-secondary {
-            background: var(--card-bg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-        }
+    .typing-dots{display:flex;gap:4px;padding:.4rem 0;}
+    .typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:bounce .9s infinite;}
+    .typing-dots span:nth-child(2){animation-delay:.15s;} .typing-dots span:nth-child(3){animation-delay:.3s;}
+    @keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
 
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-        }
+    .reset-row{text-align:center;margin-top:.75rem;}
+    #errorMsg{color:#ef4444;font-size:.83rem;margin-top:.5rem;display:none;}
 
-        .btn {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            padding: 0.75rem 2rem;
-            border-radius: 9999px;
-            border: none;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .results-section {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.5s ease;
-        }
-
-        .results-section.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .result-card {
-            background: var(--card-bg);
-            border-radius: 1.5rem;
-            padding: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .similarity-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            background: rgba(59, 130, 246, 0.1);
-            color: #60a5fa;
-            margin-bottom: 1rem;
-        }
-
-        h2 {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        h3 {
-            color: var(--text-muted);
-            font-size: 1.1rem;
-            font-weight: 400;
-            margin-bottom: 1.5rem;
-        }
-
-        .info-grid {
-            display: grid;
-            gap: 1.5rem;
-        }
-
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .label {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .value {
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .value.warning {
-            color: #f87171;
-        }
-
-        .value.safe {
-            color: #34d399;
-        }
-
-        .loader {
-            display: none;
-            width: 48px;
-            height: 48px;
-            border: 5px solid #FFF;
-            border-bottom-color: var(--primary);
-            border-radius: 50%;
-            animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
+    ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+  </style>
 </head>
-
 <body>
-    <header>
-        <div class="nav-content">
-            <div class="logo">
-                <span>🐍</span> SnakeGuard AI
-            </div>
+
+<header>
+  <div class="nav-content">
+    <div class="logo"><span>🐍</span> SnakeGuard AI</div>
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="showPage('detect',this)">🔍 Detect</button>
+      <button class="tab-btn" onclick="showPage('chatbot',this)">💬 Emergency Guide</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ════════════════════════════ PAGE: DETECT ════════════════════════════ -->
+<div id="page-detect" class="page active">
+
+  <div class="detect-grid">
+
+    <!-- Upload Card -->
+    <div class="card">
+      <div class="card-title">Analyze Image</div>
+      <div class="card-sub">Upload a clear photo of the snake for AI identification.</div>
+
+      <div class="drop-zone" id="dropZone">
+        <img id="previewImage" alt="Preview"/>
+        <div class="dzc" id="dropContent">
+          <div style="font-size:2.5rem;margin-bottom:.6rem">📁</div>
+          <p>Click or drag image here</p>
         </div>
-    </header>
+        <div id="videoContainer"><video id="cameraStream" autoplay playsinline muted></video></div>
+      </div>
 
-    <main>
-        <!-- Left: Upload -->
-        <section class="upload-card">
-            <h2>Analyze Image</h2>
-            <p style="color: var(--text-muted)">Upload a clear photo of the snake for AI identification.</p>
+      <div class="btn-row" id="mainBtnRow">
+        <button class="btn" id="analyzeBtn" disabled style="flex:2">Identify Snake</button>
+        <button class="btn-outline" id="cameraBtn" style="flex:1">📷 Camera</button>
+      </div>
+      <div class="btn-row" id="cameraControls" style="display:none">
+        <button class="btn" id="captureBtn">Capture Photo</button>
+        <button class="btn-danger" id="cancelCameraBtn">Cancel</button>
+      </div>
 
-            <div class="drop-zone" id="dropZone">
-                <img id="previewImage" alt="Preview">
-                <div class="drop-zone-content" id="dropContent">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
-                    <p>Click or drag image here</p>
-                </div>
-                <!-- Video stream container -->
-                <div id="videoContainer">
-                    <video id="cameraStream" autoplay playsinline muted></video>
-                </div>
-            </div>
+      <div class="loader" id="loader"></div>
+      <p id="errorMsg"></p>
+      <input type="file" id="fileInput" accept="image/*" style="display:none"/>
+    </div>
 
-            <input type="file" id="fileInput" accept="image/*" style="display: none">
+    <!-- Results Column -->
+    <div id="resultsCol">
 
-            <div style="display: flex; gap: 1rem; width: 100%;">
-                <button class="btn" id="analyzeBtn" disabled style="flex: 2;">Identify Snake</button>
-                <button class="btn btn-secondary" id="cameraBtn" style="flex: 1;">📷 Camera</button>
-            </div>
+      <!-- Placeholder -->
+      <div class="card placeholder-card" id="placeholderCard">
+        <div style="font-size:3rem">🔬</div>
+        <div style="font-weight:600;font-size:1.05rem">Results appear here</div>
+        <div style="color:var(--text-muted);font-size:.875rem;max-width:260px">Upload a snake photo and click <strong style="color:var(--primary)">Identify Snake</strong> to see species, venom info &amp; first aid.</div>
+      </div>
 
-            <div class="camera-controls" id="cameraControls">
-                <button class="btn" id="captureBtn">Capture Photo</button>
-                <button class="btn btn-danger" id="cancelCameraBtn">Cancel</button>
-            </div>
+      <!-- Result Card -->
+      <div class="card results-card" id="resultsCard">
+        <div class="sim-badge">🎯 Match Confidence: <span id="score">0%</span></div>
+        <div id="sevBanner" class="sev-banner sev-crit" style="display:none"></div>
+        <div class="species-name" id="speciesName">—</div>
+        <div class="venom-badge" id="venomType">—</div>
 
-            <div class="loader" id="loader"></div>
-            <p id="errorMsg" style="color: #ef4444; display: none; margin-top: 1rem;"></p>
-        </section>
+        <div class="info-grid">
+          <div class="info-item"><span class="lbl">Symptoms</span><span class="val" id="symptoms">—</span></div>
+          <div class="info-item"><span class="lbl">Reaction Stage</span><span class="val" id="reactionStage">—</span></div>
+          <div class="info-item"><span class="lbl">First Aid</span><span class="val" id="firstAid">—</span></div>
+          <div class="info-item"><span class="lbl">Hospital Importance</span><span class="val val-danger" id="hospitalImportance">—</span></div>
+        </div>
 
-        <!-- Right: Results -->
-        <section class="results-section" id="resultsSection">
-            <div class="result-card">
-                <div class="similarity-badge">
-                    Match Confidence: <span id="score">0%</span>
-                </div>
-                <h2 id="speciesName">...</h2>
-                <h3 id="venomType">...</h3>
+        <div class="btn-row" style="margin-top:1.1rem">
+          <button class="btn btn-sm" onclick="showPage('chatbot',document.querySelectorAll('.tab-btn')[1])">💬 Emergency Guide</button>
+          <button class="btn-outline btn-sm" onclick="refreshHospitals()">🏥 Refresh Hospitals</button>
+        </div>
+      </div>
 
-                <div class="info-grid">
-                    <div class="info-item">
-                        <span class="label">Severity Level</span>
-                        <span class="value" id="severityLevel">...</span>
-                    </div>
+    </div>
+  </div>
 
-                    <div class="info-item">
-                        <span class="label">Symptoms</span>
-                        <span class="value" id="symptoms">...</span>
-                    </div>
+  <!-- Hospital Card — full width below grid -->
+  <div class="hosp-card" id="hospCard">
+    <div class="hosp-inner">
+      <div class="hosp-header">
+        <div class="hosp-title">🏥 Nearest Hospitals <span style="font-size:.78rem;color:var(--text-muted);font-weight:400">sorted by distance</span></div>
+        <span class="gps-pill gps-wait" id="gpsStatus">📍 Locating…</span>
+      </div>
+      <div id="hospContent">
+        <div class="hosp-loader">
+          <div class="loader" style="display:block;margin:0 auto .6rem"></div>
+          <div style="color:var(--text-muted);font-size:.83rem">Getting your location and searching nearby hospitals…</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-                    <div class="info-item">
-                        <span class="label">First Aid</span>
-                        <span class="value" id="firstAid">...</span>
-                    </div>
+</div><!-- /page-detect -->
 
-                    <div class="info-item">
-                        <span class="label">Hospital Importance</span>
-                        <span class="value warning" id="hospitalImportance">...</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
 
-    <script>
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const previewImage = document.getElementById('previewImage');
-        const dropContent = document.getElementById('dropContent');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const cameraBtn = document.getElementById('cameraBtn');
-        const cameraControls = document.getElementById('cameraControls');
-        const videoContainer = document.getElementById('videoContainer');
-        const cameraStream = document.getElementById('cameraStream');
-        const captureBtn = document.getElementById('captureBtn');
-        const cancelCameraBtn = document.getElementById('cancelCameraBtn');
-        const loader = document.getElementById('loader');
-        const resultsSection = document.getElementById('resultsSection');
-        const errorMsg = document.getElementById('errorMsg');
+<!-- ════════════════════════════ PAGE: CHATBOT ════════════════════════════ -->
+<div id="page-chatbot" class="page">
+  <div class="chat-layout">
 
-        let stream = null;
-        let capturedBlob = null;
+    <div class="chat-intro">
+      <h2>🚨 Emergency Snakebite Guide</h2>
+      <p>Select an option below — get instant, structured medical guidance.</p>
+    </div>
 
-        // Drag and drop handlers
-        dropZone.addEventListener('click', () => fileInput.click());
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('active');
-        });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('active');
-            if (e.dataTransfer.files.length) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
+    <div class="emerg-strip">
+      <span style="font-size:1.1rem">⚠️</span>
+      <div><strong>Emergency?</strong> Call <strong>112</strong> immediately. This guide provides first-aid guidance only — always get to a hospital.</div>
+    </div>
 
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) {
-                handleFile(e.target.files[0]);
-            }
-        });
+    <div class="chat-win" id="chatWin"></div>
 
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                showError('Please select a valid image file.');
-                return;
-            }
+    <div class="reset-row">
+      <button class="btn-outline btn-sm" onclick="resetChat()" style="margin-top:.6rem">↺ Start Over</button>
+    </div>
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                previewImage.src = e.target.result;
-                previewImage.style.display = 'block';
-                dropContent.style.display = 'none';
-                videoContainer.style.display = 'none';
-                analyzeBtn.disabled = false;
-                resultsSection.classList.remove('visible');
-                errorMsg.style.display = 'none';
-                capturedBlob = file; // Store the original file as blob
-            };
-            reader.readAsDataURL(file);
-        }
+  </div>
+</div><!-- /page-chatbot -->
 
-        // Camera Logic
-        cameraBtn.addEventListener('click', async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' } // Prefer back camera on mobile
-                });
-                cameraStream.srcObject = stream;
+</main>
 
-                // UI Toggle
-                videoContainer.style.display = 'block';
-                dropContent.style.display = 'none';
-                previewImage.style.display = 'none';
-                cameraControls.style.display = 'flex';
-                cameraBtn.parentElement.style.display = 'none';
-                errorMsg.style.display = 'none';
-            } catch (err) {
-                console.error(err);
-                showError('Could not access camera. Please check permissions.');
-            }
-        });
+<script>
+// ════════════════════════════════════════════════
+//  PAGE NAV
+// ════════════════════════════════════════════════
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
 
-        cancelCameraBtn.addEventListener('click', stopCamera);
+// ════════════════════════════════════════════════
+//  FILE / CAMERA
+// ════════════════════════════════════════════════
+const fileInput       = document.getElementById('fileInput');
+const dropZone        = document.getElementById('dropZone');
+const previewImage    = document.getElementById('previewImage');
+const dropContent     = document.getElementById('dropContent');
+const analyzeBtn      = document.getElementById('analyzeBtn');
+const cameraBtn       = document.getElementById('cameraBtn');
+const cameraControls  = document.getElementById('cameraControls');
+const mainBtnRow      = document.getElementById('mainBtnRow');
+const videoContainer  = document.getElementById('videoContainer');
+const cameraStream    = document.getElementById('cameraStream');
+const captureBtn      = document.getElementById('captureBtn');
+const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+const loader          = document.getElementById('loader');
+const errorMsg        = document.getElementById('errorMsg');
 
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            videoContainer.style.display = 'none';
-            cameraControls.style.display = 'none';
-            cameraBtn.parentElement.style.display = 'flex';
+let stream = null, capturedBlob = null;
 
-            if (previewImage.src && !previewImage.src.includes('window.location')) {
-                previewImage.style.display = 'block';
-            } else {
-                dropContent.style.display = 'block';
-            }
-        }
+dropZone.addEventListener('click', () => { if (!stream) fileInput.click(); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('active'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
-        captureBtn.addEventListener('click', () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = cameraStream.videoWidth;
-            canvas.height = cameraStream.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(cameraStream, 0, 0);
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) { showErr('Please select a valid image file.'); return; }
+  const r = new FileReader();
+  r.onload = e => {
+    previewImage.src = e.target.result;
+    previewImage.style.display = 'block';
+    dropContent.style.display = 'none';
+    videoContainer.style.display = 'none';
+    analyzeBtn.disabled = false;
+    clearResults();
+    errorMsg.style.display = 'none';
+    capturedBlob = file;
+  };
+  r.readAsDataURL(file);
+}
 
-            canvas.toBlob((blob) => {
-                capturedBlob = blob;
-                const url = URL.createObjectURL(blob);
-                previewImage.src = url;
-                previewImage.style.display = 'block';
-                stopCamera();
-                analyzeBtn.disabled = false;
-            }, 'image/jpeg', 0.9);
-        });
+cameraBtn.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+    cameraStream.srcObject = stream;
+    videoContainer.style.display = 'block';
+    dropContent.style.display = 'none';
+    previewImage.style.display = 'none';
+    cameraControls.style.display = 'flex';
+    mainBtnRow.style.display = 'none';
+  } catch(e) { showErr('Could not access camera. Please check permissions.'); }
+});
 
-        function showError(msg) {
-            errorMsg.textContent = msg;
-            errorMsg.style.display = 'block';
-        }
+cancelCameraBtn.addEventListener('click', stopCamera);
+function stopCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  videoContainer.style.display = 'none';
+  cameraControls.style.display = 'none';
+  mainBtnRow.style.display = 'flex';
+  if (previewImage.src && previewImage.src !== window.location.href) previewImage.style.display = 'block';
+  else dropContent.style.display = 'flex';
+}
 
-        analyzeBtn.addEventListener('click', async () => {
-            if (!capturedBlob) return;
+captureBtn.addEventListener('click', () => {
+  const c = document.createElement('canvas');
+  c.width = cameraStream.videoWidth; c.height = cameraStream.videoHeight;
+  c.getContext('2d').drawImage(cameraStream, 0, 0);
+  c.toBlob(blob => {
+    capturedBlob = blob;
+    previewImage.src = URL.createObjectURL(blob);
+    previewImage.style.display = 'block';
+    stopCamera();
+    analyzeBtn.disabled = false;
+  }, 'image/jpeg', 0.9);
+});
 
-            // UI State: Loading
-            analyzeBtn.parentElement.style.display = 'none';
-            loader.style.display = 'block';
-            errorMsg.style.display = 'none';
-            resultsSection.classList.remove('visible');
+function showErr(m) { errorMsg.textContent = m; errorMsg.style.display = 'block'; }
 
-            const formData = new FormData();
-            formData.append('image', capturedBlob, 'capture.jpg');
+function clearResults() {
+  document.getElementById('resultsCard').classList.remove('show');
+  document.getElementById('resultsCard').style.display = 'none';
+  document.getElementById('placeholderCard').style.display = 'flex';
+  const hc = document.getElementById('hospCard');
+  hc.classList.remove('show'); hc.style.display = 'none';
+}
 
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    body: formData
-                });
+// ════════════════════════════════════════════════
+//  PREDICT
+// ════════════════════════════════════════════════
+analyzeBtn.addEventListener('click', async () => {
+  if (!capturedBlob) return;
+  mainBtnRow.style.display = 'none';
+  loader.style.display = 'block';
+  errorMsg.style.display = 'none';
+  clearResults();
 
-                if (!response.ok) {
-                    throw new Error('Prediction failed');
-                }
+  const fd = new FormData();
+  fd.append('image', capturedBlob, 'capture.jpg');
 
-                const data = await response.json();
-                displayResults(data);
+  try {
+    const res = await fetch('/predict', { method:'POST', body:fd });
+    if (!res.ok) throw new Error(await res.text());
+    displayResults(await res.json());
+    triggerHospitals();          // ← auto-show hospital card
+  } catch(e) {
+    showErr('Error analyzing image. Please try again.');
+  } finally {
+    mainBtnRow.style.display = 'flex';
+    loader.style.display = 'none';
+  }
+});
 
-            } catch (err) {
-                showError('Error analyzing image. Please try again.');
-                console.error(err);
-            } finally {
-                analyzeBtn.parentElement.style.display = 'flex';
-                loader.style.display = 'none';
-            }
-        });
+function displayResults(d) {
+  document.getElementById('placeholderCard').style.display = 'none';
+  const rc = document.getElementById('resultsCard');
+  rc.style.display = 'block'; rc.classList.add('show');
 
-        function displayResults(data) {
-            document.getElementById('speciesName').textContent = data.species_name;
-            document.getElementById('venomType').textContent = data.venom_type;
-            document.getElementById('severityLevel').textContent = data.severity_level;
-            document.getElementById('symptoms').textContent = data.symptoms;
-            document.getElementById('firstAid').textContent = data.first_aid;
-            document.getElementById('hospitalImportance').textContent = data.hospital_importance;
+  document.getElementById('speciesName').textContent   = d.species_name   || '—';
+  document.getElementById('symptoms').textContent      = d.symptoms        || '—';
+  document.getElementById('reactionStage').textContent = d.reaction_stage  || '—';
+  document.getElementById('firstAid').textContent      = d.first_aid       || '—';
+  document.getElementById('hospitalImportance').textContent = d.hospital_importance || '—';
+  document.getElementById('score').textContent = Math.round((d.similarity_score||0)*100)+'%';
 
-            // Set color based on venom type
-            const venomValue = document.getElementById('venomType');
-            if (data.venom_type.toLowerCase().includes('non-venomous') || data.venom_type.toLowerCase().includes('harmless')) {
-                venomValue.style.color = '#34d399';
-            } else {
-                venomValue.style.color = '#f87171';
-            }
+  const vt = document.getElementById('venomType');
+  vt.textContent = d.venom_type || '—';
+  vt.style.color = (d.venom_type||'').toLowerCase().includes('non-venomous') ? '#34d399' : '#f87171';
 
-            const scorePct = Math.round(data.similarity_score * 100);
-            document.getElementById('score').textContent = `${scorePct}%`;
+  const bann = document.getElementById('sevBanner');
+  bann.style.display = 'flex';
+  bann.className = 'sev-banner';
+  const sl = (d.severity_level||'').toLowerCase();
+  if (sl.includes('critical')||sl.includes('high')) {
+    bann.classList.add('sev-crit');
+    bann.innerHTML = '🚨 <span>CRITICAL — Seek emergency medical care immediately</span>';
+  } else if (sl.includes('moderate')||sl.includes('medium')) {
+    bann.classList.add('sev-mod');
+    bann.innerHTML = '⚠️ <span>MODERATE — Visit hospital as soon as possible</span>';
+  } else {
+    bann.classList.add('sev-low');
+    bann.innerHTML = '✅ <span>LOW RISK — Monitor symptoms; see a doctor if unsure</span>';
+  }
+}
 
-            resultsSection.classList.add('visible');
-        }
-    </script>
+// ════════════════════════════════════════════════
+//  HOSPITAL FINDER
+// ════════════════════════════════════════════════
+let userLat = null, userLon = null;
+
+function triggerHospitals() {
+  const hc = document.getElementById('hospCard');
+  hc.style.display = 'block'; hc.classList.add('show');
+  setTimeout(() => hc.scrollIntoView({ behavior:'smooth', block:'nearest' }), 100);
+  fetchHospitals();
+}
+function refreshHospitals() {
+  const hc = document.getElementById('hospCard');
+  hc.style.display = 'block'; hc.classList.add('show');
+  fetchHospitals();
+}
+
+function fetchHospitals() {
+  setGPS('wait','📍 Locating…');
+  document.getElementById('hospContent').innerHTML = `
+    <div class="hosp-loader">
+      <div class="loader" style="display:block;margin:0 auto .6rem"></div>
+      <div style="color:var(--text-muted);font-size:.83rem">Getting your location and searching nearby hospitals…</div>
+    </div>`;
+
+  if (!navigator.geolocation) { setGPS('err','❌ GPS unavailable'); hospErr('Your browser does not support geolocation.'); return; }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => { userLat=pos.coords.latitude; userLon=pos.coords.longitude; setGPS('ok','✅ Location found'); callHospAPI(userLat,userLon); },
+    ()  => { setGPS('err','❌ Location denied'); hospErr('Location access denied. Please allow location in your browser and click Refresh Hospitals.'); },
+    { timeout:10000, enableHighAccuracy:true }
+  );
+}
+
+async function callHospAPI(lat,lon) {
+  try {
+    const res = await fetch('/nearby-hospitals', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ latitude:lat, longitude:lon, radius_km:10, max_results:6, provider:'osm' })
+    });
+    if (!res.ok) throw new Error();
+    renderHospitals(await res.json());
+  } catch(e) { hospErr('Could not fetch hospitals. Check your connection and try again.'); }
+}
+
+function renderHospitals(data) {
+  if (!data.hospitals||!data.hospitals.length) {
+    document.getElementById('hospContent').innerHTML = `
+      <div class="hosp-empty">
+        <div style="font-size:2rem;margin-bottom:.4rem">🏥</div>
+        <div>No hospitals found within 10 km of your location.</div>
+        <button class="btn-outline btn-sm" style="margin-top:.75rem" onclick="fetchHospitals()">Retry</button>
+      </div>`;
+    return;
+  }
+  const h = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const items = data.hospitals.map((hosp,i) => `
+    <div class="hosp-item">
+      <div class="hosp-rank">${i+1}</div>
+      <div class="hosp-info">
+        <div class="hosp-name">${h(hosp.name)}</div>
+        <div class="hosp-addr">📍 ${h(hosp.address)}</div>
+        ${hosp.phone ? `<div class="hosp-phone">📞 <a href="tel:${h(hosp.phone)}" style="color:var(--primary);text-decoration:none">${h(hosp.phone)}</a></div>` : ''}
+        <div class="hosp-meta">
+          ${hosp.emergency ? '<span class="htag htag-em">🚨 Emergency</span>' : ''}
+          <span class="htag">${h(hosp.distance_km.toFixed(1))} km away</span>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="hosp-dist">${h(hosp.distance_km.toFixed(1))} km</div>
+        <a href="${h(hosp.maps_url)}" target="_blank" style="text-decoration:none">
+          <button class="btn-outline btn-sm" style="margin-top:.35rem;white-space:nowrap">🗺 Directions</button>
+        </a>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('hospContent').innerHTML = `
+    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:.7rem">
+      Found <strong style="color:var(--text-main)">${data.total_found}</strong> hospitals within ${data.radius_km} km &nbsp;·&nbsp; ${h(data.provider)}
+    </div>
+    <div class="hosp-list">${items}</div>
+    <div style="margin-top:.65rem;font-size:.72rem;color:var(--text-muted);text-align:center">${h(data.note)}</div>`;
+}
+
+function hospErr(msg) {
+  document.getElementById('hospContent').innerHTML = `
+    <div class="hosp-empty">
+      <div style="font-size:1.4rem;margin-bottom:.4rem">⚠️</div>
+      <div style="margin-bottom:.6rem">${msg}</div>
+      <button class="btn-outline btn-sm" onclick="fetchHospitals()">Try Again</button>
+    </div>`;
+}
+function setGPS(t,txt) {
+  const el = document.getElementById('gpsStatus');
+  el.textContent = txt; el.className = 'gps-pill gps-'+t;
+}
+
+// ════════════════════════════════════════════════
+//  CHATBOT — MULTIPLE CHOICE FLOW
+// ════════════════════════════════════════════════
+const chatWin = document.getElementById('chatWin');
+const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+const FLOWS = {
+  start:{
+    bot:'Hi! I\'m your SnakeGuard emergency guide 🐍<br>What do you need help with right now?',
+    opts:[
+      {l:'🚨 I was just bitten — what do I do?', n:'bitten'},
+      {l:'🐍 Is this snake dangerous?',            n:'dangerous'},
+      {l:'💊 What are the symptoms?',              n:'sym_menu'},
+      {l:'💉 Anti-venom & treatment info',         n:'antivenom'},
+      {l:'🛡️ How to prevent snakebites',          n:'prevent'},
+    ]
+  },
+  bitten:{
+    custom:()=>`<div class="bot-bubble">
+      <strong>🚨 Snakebite First Aid — Act immediately</strong>
+      <div class="isec"><div class="isec-title">Do these NOW</div>
+        <ul class="ilist">
+          <li>Stay calm — panic speeds venom spread</li>
+          <li>Call <strong>112</strong> / emergency services immediately</li>
+          <li>Immobilise the bitten limb (splint or sling)</li>
+          <li>Keep bite at or BELOW heart level</li>
+          <li>Remove jewellery and tight clothing near bite</li>
+          <li>Get to hospital as fast as possible</li>
+        </ul>
+      </div>
+    </div>`,
+    opts:[
+      {l:'✅ Full list of Do\'s',     n:'dos'},
+      {l:'🚫 Full list of Don\'ts',   n:'donts'},
+      {l:'⚠️ Emergency warning signs',n:'warn_signs'},
+      {l:'🏥 Find nearest hospital',  n:'find_hosp'},
+      {l:'← Back to menu',           n:'start'},
+    ]
+  },
+  dos:{
+    custom:()=>buildList('✅ What TO DO after a snakebite',[
+      'Stay calm — keep victim as still as possible',
+      'Immobilise the bitten limb with a splint or sling',
+      'Keep the bite at or BELOW heart level',
+      'Remove jewellery, watches, tight clothing near bite',
+      'Note the exact time of the bite',
+      'Remember snake appearance — do NOT try to catch it',
+      'Call 112 / local emergency number immediately',
+      'Carry the victim to hospital — avoid walking',
+    ],'s'),
+    opts:[{l:'🚫 Show Don\'ts',n:'donts'},{l:'⚠️ Warning signs',n:'warn_signs'},{l:'← Back',n:'bitten'}]
+  },
+  donts:{
+    custom:()=>buildList('🚫 What NOT TO DO after a snakebite',[
+      'Do NOT cut or suck the wound',
+      'Do NOT apply tourniquet or tight bandage',
+      'Do NOT apply ice, heat, or electric shock',
+      'Do NOT give alcohol, aspirin, or ibuprofen',
+      'Do NOT let victim walk if avoidable',
+      'Do NOT try to catch or kill the snake',
+      'Do NOT use traditional or home remedies',
+    ],'d'),
+    opts:[{l:'✅ Show Do\'s',n:'dos'},{l:'⚠️ Warning signs',n:'warn_signs'},{l:'← Back',n:'bitten'}]
+  },
+  warn_signs:{
+    custom:()=>buildList('🚨 Emergency Warning Signs — Call 112 NOW if you see ANY of these:',[
+      'Difficulty breathing or swallowing',
+      'Severe swelling spreading rapidly up the limb',
+      'Blurred vision or drooping eyelids',
+      'Muscle weakness or paralysis',
+      'Uncontrolled bleeding from wound or elsewhere',
+      'Loss of consciousness or seizures',
+      'Severe chest or abdominal pain',
+      'Skin turning dark or blistering around bite',
+    ],'d'),
+    opts:[{l:'✅ First aid steps',n:'bitten'},{l:'🏥 Find hospital',n:'find_hosp'},{l:'← Menu',n:'start'}]
+  },
+  sym_menu:{
+    bot:'Symptoms differ by venom type.<br>Which type do you want to learn about?',
+    opts:[
+      {l:'🧠 Neurotoxic  (Cobra · Krait · Mamba)',            n:'neuro'},
+      {l:'🩸 Hemotoxic   (Viper · Rattlesnake · Russell\'s)', n:'hemo'},
+      {l:'⚠️ Cytotoxic  (Puff Adder · Gaboon Viper)',        n:'cyto'},
+      {l:'← Back to menu',                                     n:'start'},
+    ]
+  },
+  neuro:{
+    custom:()=>buildSymptoms('🧠 Neurotoxic Venom','Cobra · Krait · Mamba · Coral Snake · Sea Snake',[
+      {t:'Early (1–4 hrs)',items:['Drooping eyelids (ptosis)','Double or blurred vision','Difficulty speaking or swallowing','Excessive drooling or dry mouth','Facial muscle weakness']},
+      {t:'Progressive',   items:['Descending paralysis head → limbs','Respiratory muscle weakness','Generalised body weakness','Nausea and vomiting']},
+      {t:'🚨 Critical',   items:['Respiratory failure','Complete flaccid paralysis','Cardiovascular collapse']},
+    ]),
+    opts:[{l:'🩸 Hemotoxic',n:'hemo'},{l:'⚠️ Cytotoxic',n:'cyto'},{l:'💉 Anti-venom',n:'antivenom'},{l:'← Back',n:'sym_menu'}]
+  },
+  hemo:{
+    custom:()=>buildSymptoms('🩸 Hemotoxic Venom','Viper · Pit Viper · Rattlesnake · Russell\'s Viper',[
+      {t:'Early',       items:['Severe local pain and swelling','Blistering and bruising at bite','Bleeding from wound','Nausea, vomiting, abdominal pain']},
+      {t:'Progressive', items:['Widespread bruising (ecchymosis)','Bleeding from gums/nose/IV sites','Dark or blood-tinged urine','Tissue necrosis around bite']},
+      {t:'🚨 Critical', items:['Kidney failure','Uncontrolled haemorrhage','DIC (clotting disorder)','Cardiovascular shock']},
+    ]),
+    opts:[{l:'🧠 Neurotoxic',n:'neuro'},{l:'⚠️ Cytotoxic',n:'cyto'},{l:'💉 Anti-venom',n:'antivenom'},{l:'← Back',n:'sym_menu'}]
+  },
+  cyto:{
+    custom:()=>buildSymptoms('⚠️ Cytotoxic Venom','Puff Adder · Gaboon Viper · Spitting Cobra',[
+      {t:'Early',       items:['Intense burning pain at bite','Rapid swelling and redness','Fluid-filled blisters forming','Skin darkening (purple/black)']},
+      {t:'Progressive', items:['Deep tissue necrosis','Compartment syndrome','High infection risk']},
+      {t:'🚨 Critical', items:['Limb-threatening necrosis','Systemic infection / sepsis']},
+    ]),
+    opts:[{l:'🧠 Neurotoxic',n:'neuro'},{l:'🩸 Hemotoxic',n:'hemo'},{l:'💉 Anti-venom',n:'antivenom'},{l:'← Back',n:'sym_menu'}]
+  },
+  dangerous:{
+    custom:()=>buildList('🐍 Signs a Snake May Be Dangerous',[
+      '🔴 Triangular or arrow-shaped head',
+      '🔴 Visible fangs (front or rear)',
+      '🔴 Hood that spreads when threatened (cobra)',
+      '🔴 Rattle on the tail (rattlesnake)',
+      '🔴 Bright colour pattern: red–yellow–black bands',
+      '🔴 Very thick body relative to length',
+      '🔴 Slit or elliptical (cat-like) pupils',
+      '🟢 LOWER RISK: Round head · Slender body · Round pupils',
+    ], null, '⚠️ ALL bites should be treated as dangerous until assessed by a doctor.'),
+    opts:[{l:'🚨 First aid steps',n:'bitten'},{l:'💊 Symptoms',n:'sym_menu'},{l:'← Menu',n:'start'}]
+  },
+  antivenom:{
+    custom:()=>buildList('💉 Anti-Venom & Treatment',[
+      'Anti-venom is the ONLY proven treatment',
+      'Must be given in a hospital — never at home',
+      'Most effective within 4–6 hours of the bite',
+      'Polyvalent anti-venom covers multiple species',
+      'Allergic reactions possible — hospital monitoring needed',
+      '🇮🇳 India: 1800-116-117 (free poison control)',
+      '🇺🇸 USA: 1-800-222-1222',
+      '🇦🇺 Australia: 13 11 26',
+      '🌍 Global: 112 / 911 / 999',
+    ],'s'),
+    opts:[{l:'🏥 Find nearest hospital',n:'find_hosp'},{l:'🚨 First aid steps',n:'bitten'},{l:'← Menu',n:'start'}]
+  },
+  prevent:{
+    custom:()=>buildList('🛡️ How to Prevent Snakebites',[
+      'Wear boots and long trousers in snake-prone areas',
+      'Use a torch when walking at night',
+      'Never put hands into crevices or under logs',
+      'Keep grass and bushes around home short',
+      'Never handle or provoke any snake',
+      'Store food properly to avoid attracting rodents',
+      'Shake out boots before putting them on outdoors',
+      'Sleep with mosquito net tucked in when camping',
+    ],'s'),
+    opts:[{l:'💊 Symptoms guide',n:'sym_menu'},{l:'🚨 First aid steps',n:'bitten'},{l:'← Menu',n:'start'}]
+  },
+  find_hosp:{
+    custom:()=>{
+      setTimeout(()=>{ showPage('detect',document.querySelectorAll('.tab-btn')[0]); triggerHospitals(); },700);
+      return `<div class="bot-bubble">🏥 Opening hospital finder on the <strong>Detect</strong> page…<br>Please allow location access when your browser asks.</div>`;
+    },
+    opts:[{l:'← Back to menu',n:'start'}]
+  },
+};
+
+// Bubble builders
+function buildList(title, items, liClass, note) {
+  const cls = liClass === 'd' ? ' class="d"' : liClass === 's' ? ' class="s"' : '';
+  return `<div class="bot-bubble">
+    <strong>${h(title)}</strong>
+    <div class="isec"><ul class="ilist">${items.map(i=>`<li${cls}>${h(i)}</li>`).join('')}</ul>
+    ${note?`<div style="margin-top:.5rem;font-size:.78rem;color:var(--yellow)">${h(note)}</div>`:''}</div>
+  </div>`;
+}
+
+function buildSymptoms(title, snakes, stages) {
+  const stagesHtml = stages.map(s=>`
+    <div class="isec">
+      <div class="isec-title">${h(s.t)}</div>
+      <ul class="ilist">${s.items.map(i=>`<li>${h(i)}</li>`).join('')}</ul>
+    </div>`).join('');
+  return `<div class="bot-bubble">
+    <strong>${h(title)}</strong>
+    <div style="font-size:.76rem;color:var(--text-muted);margin:.3rem 0">${h(snakes)}</div>
+    ${stagesHtml}
+  </div>`;
+}
+
+// Render a flow step
+function renderStep(key) {
+  const flow = FLOWS[key]; if(!flow) return;
+  chatWin.querySelectorAll('.opt-btn').forEach(b=>b.disabled=true);
+
+  const tid = 'typing_'+Date.now();
+  chatWin.innerHTML += `
+    <div class="msg-bot" id="${tid}">
+      <div class="bot-av">🐍</div>
+      <div class="bot-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>
+    </div>`;
+  chatWin.scrollTop = chatWin.scrollHeight;
+
+  setTimeout(()=>{
+    const t = document.getElementById(tid); if(t) t.remove();
+
+    const bubble = flow.custom ? flow.custom() : `<div class="bot-bubble">${flow.bot}</div>`;
+    const optsHtml = (flow.opts||[]).map(o=>
+      `<button class="opt-btn" onclick="userPick('${h(o.l).replace(/'/g,"&#39;")}','${o.n}')">${h(o.l)}</button>`
+    ).join('');
+
+    chatWin.innerHTML += `
+      <div class="msg-bot">
+        <div class="bot-av">🐍</div>
+        <div>${bubble}<div class="opts-grid">${optsHtml}</div></div>
+      </div>`;
+    chatWin.scrollTop = chatWin.scrollHeight;
+  }, 550);
+}
+
+function userPick(label, next) {
+  chatWin.querySelectorAll('.opt-btn').forEach(b=>b.disabled=true);
+  chatWin.innerHTML += `<div class="msg-user"><div class="user-bubble">${h(label)}</div></div>`;
+  chatWin.scrollTop = chatWin.scrollHeight;
+  renderStep(next);
+}
+
+function resetChat() { chatWin.innerHTML=''; renderStep('start'); }
+
+// Init
+resetChat();
+</script>
 </body>
-
 </html>
