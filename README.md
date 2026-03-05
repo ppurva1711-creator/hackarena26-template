@@ -115,10 +115,9 @@ snakebite_project/
 ## 👥 Team: Electrodes
 
 
-- **PURVA PATIL** — Role: Developing architecture, Backend Technology
-- **RIYA WAGH** — Role: FrontEnd (UI)
-- **VAISHNAVI DHAKARE** — Role: Database Findings and structuring, PPT Creation
-
+- **PURVA PATIL** — Role:Built the ViT-based snake detection model, Implemented FAISS similarity search, Worked on FASTAPI backend and endpoints
+- **RIYA WAGH** — Role:Built the rule-based emergency chatbot (src/chatbot.py), Designed the 7-intent medical knowledge base, worked on database findings
+- **VAISHNAVI DHAKARE** — Role: Built the entire frontend UI(static/index.html), Integrated real-time GPS-based hospital finder(src/hospital_locator.py), Connected OpenStreetMap Overpass API for live hospital data
 ---
 
 ---
