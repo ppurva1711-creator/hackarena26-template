@@ -5,17 +5,23 @@
 
 ## Team Details
 
-- **Team Name:**
+- **Team Name:** ELECTRODES
 - **Members:**
+- PURVA PATIL
+- RIYA WAGH
+- VAISHNAVI DHAKARE
 - **Domain:**
+- FINETECH & MONEY MANAGEMENT
 
 ---
 
 ## Project
 
 **Problem:** 
+Venomous bites are hard to identify quickly, causing delayed treatment and risk to life. An AI-powered system can detect and classify bites in real time, improving safety and medical response
 
 **Solution:** 
+We propose a Vision Transformer-based retrieval system that analyzes bite-site images, identifies probable snake species, estimates venom severity, and provides immediate, medically validated first-aid and emergency recommendations
 
 ---
 
@@ -30,8 +36,13 @@
 ---
 
 ## Attribution
-
-List any external libraries, APIs, or datasets used here.
+1. Programming language
+  Python 3.2
+2. Deep Learning and Model Frameworks
+  Pytorch
+  Hugging Face Transformer
+3. Image Processing and Data Handling
+  
 
 ---
 
