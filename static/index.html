@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnakeGuard AI - Image Detection</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #3b82f6;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        main {
+            flex: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 1024px) {
+            main {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .upload-card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+            text-align: center;
+        }
+
+        .drop-zone {
+            width: 100%;
+            height: 300px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .drop-zone.active {
+            border-color: var(--primary);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .drop-zone img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+            z-index: 10;
+        }
+
+        .drop-zone-content {
+            pointer-events: none;
+            color: var(--text-muted);
+        }
+
+        #videoContainer {
+            width: 100%;
+            height: 300px;
+            border-radius: 1rem;
+            overflow: hidden;
+            background: #000;
+            display: none;
+            position: relative;
+        }
+
+        #cameraStream {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-controls {
+            display: none;
+            width: 100%;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            border: none;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease;
+        }
+
+        .results-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 1.5rem;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .similarity-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            margin-bottom: 1rem;
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 400;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .label {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .value {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .value.warning {
+            color: #f87171;
+        }
+
+        .value.safe {
+            color: #34d399;
+        }
+
+        .loader {
+            display: none;
+            width: 48px;
+            height: 48px;
+            border: 5px solid #FFF;
+            border-bottom-color: var(--primary);
+            border-radius: 50%;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="nav-content">
+            <div class="logo">
+                <span>🐍</span> SnakeGuard AI
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Left: Upload -->
+        <section class="upload-card">
+            <h2>Analyze Image</h2>
+            <p style="color: var(--text-muted)">Upload a clear photo of the snake for AI identification.</p>
+
+            <div class="drop-zone" id="dropZone">
+                <img id="previewImage" alt="Preview">
+                <div class="drop-zone-content" id="dropContent">
+                    <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
+                    <p>Click or drag image here</p>
+                </div>
+                <!-- Video stream container -->
+                <div id="videoContainer">
+                    <video id="cameraStream" autoplay playsinline muted></video>
+                </div>
+            </div>
+
+            <input type="file" id="fileInput" accept="image/*" style="display: none">
+
+            <div style="display: flex; gap: 1rem; width: 100%;">
+                <button class="btn" id="analyzeBtn" disabled style="flex: 2;">Identify Snake</button>
+                <button class="btn btn-secondary" id="cameraBtn" style="flex: 1;">📷 Camera</button>
+            </div>
+
+            <div class="camera-controls" id="cameraControls">
+                <button class="btn" id="captureBtn">Capture Photo</button>
+                <button class="btn btn-danger" id="cancelCameraBtn">Cancel</button>
+            </div>
+
+            <div class="loader" id="loader"></div>
+            <p id="errorMsg" style="color: #ef4444; display: none; margin-top: 1rem;"></p>
+        </section>
+
+        <!-- Right: Results -->
+        <section class="results-section" id="resultsSection">
+            <div class="result-card">
+                <div class="similarity-badge">
+                    Match Confidence: <span id="score">0%</span>
+                </div>
+                <h2 id="speciesName">...</h2>
+                <h3 id="venomType">...</h3>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">Severity Level</span>
+                        <span class="value" id="severityLevel">...</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="label">Symptoms</span>
+                        <span class="value" id="symptoms">...</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="label">First Aid</span>
+                        <span class="value" id="firstAid">...</span>
+                    </div>
+
+                    <div class="info-item">
+                        <span class="label">Hospital Importance</span>
+                        <span class="value warning" id="hospitalImportance">...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const previewImage = document.getElementById('previewImage');
+        const dropContent = document.getElementById('dropContent');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const cameraControls = document.getElementById('cameraControls');
+        const videoContainer = document.getElementById('videoContainer');
+        const cameraStream = document.getElementById('cameraStream');
+        const captureBtn = document.getElementById('captureBtn');
+        const cancelCameraBtn = document.getElementById('cancelCameraBtn');
+        const loader = document.getElementById('loader');
+        const resultsSection = document.getElementById('resultsSection');
+        const errorMsg = document.getElementById('errorMsg');
+
+        let stream = null;
+        let capturedBlob = null;
+
+        // Drag and drop handlers
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('active');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('active');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                dropContent.style.display = 'none';
+                videoContainer.style.display = 'none';
+                analyzeBtn.disabled = false;
+                resultsSection.classList.remove('visible');
+                errorMsg.style.display = 'none';
+                capturedBlob = file; // Store the original file as blob
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Camera Logic
+        cameraBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' } // Prefer back camera on mobile
+                });
+                cameraStream.srcObject = stream;
+
+                // UI Toggle
+                videoContainer.style.display = 'block';
+                dropContent.style.display = 'none';
+                previewImage.style.display = 'none';
+                cameraControls.style.display = 'flex';
+                cameraBtn.parentElement.style.display = 'none';
+                errorMsg.style.display = 'none';
+            } catch (err) {
+                console.error(err);
+                showError('Could not access camera. Please check permissions.');
+            }
+        });
+
+        cancelCameraBtn.addEventListener('click', stopCamera);
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            videoContainer.style.display = 'none';
+            cameraControls.style.display = 'none';
+            cameraBtn.parentElement.style.display = 'flex';
+
+            if (previewImage.src && !previewImage.src.includes('window.location')) {
+                previewImage.style.display = 'block';
+            } else {
+                dropContent.style.display = 'block';
+            }
+        }
+
+        captureBtn.addEventListener('click', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = cameraStream.videoWidth;
+            canvas.height = cameraStream.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(cameraStream, 0, 0);
+
+            canvas.toBlob((blob) => {
+                capturedBlob = blob;
+                const url = URL.createObjectURL(blob);
+                previewImage.src = url;
+                previewImage.style.display = 'block';
+                stopCamera();
+                analyzeBtn.disabled = false;
+            }, 'image/jpeg', 0.9);
+        });
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!capturedBlob) return;
+
+            // UI State: Loading
+            analyzeBtn.parentElement.style.display = 'none';
+            loader.style.display = 'block';
+            errorMsg.style.display = 'none';
+            resultsSection.classList.remove('visible');
+
+            const formData = new FormData();
+            formData.append('image', capturedBlob, 'capture.jpg');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Prediction failed');
+                }
+
+                const data = await response.json();
+                displayResults(data);
+
+            } catch (err) {
+                showError('Error analyzing image. Please try again.');
+                console.error(err);
+            } finally {
+                analyzeBtn.parentElement.style.display = 'flex';
+                loader.style.display = 'none';
+            }
+        });
+
+        function displayResults(data) {
+            document.getElementById('speciesName').textContent = data.species_name;
+            document.getElementById('venomType').textContent = data.venom_type;
+            document.getElementById('severityLevel').textContent = data.severity_level;
+            document.getElementById('symptoms').textContent = data.symptoms;
+            document.getElementById('firstAid').textContent = data.first_aid;
+            document.getElementById('hospitalImportance').textContent = data.hospital_importance;
+
+            // Set color based on venom type
+            const venomValue = document.getElementById('venomType');
+            if (data.venom_type.toLowerCase().includes('non-venomous') || data.venom_type.toLowerCase().includes('harmless')) {
+                venomValue.style.color = '#34d399';
+            } else {
+                venomValue.style.color = '#f87171';
+            }
+
+            const scorePct = Math.round(data.similarity_score * 100);
+            document.getElementById('score').textContent = `${scorePct}%`;
+
+            resultsSection.classList.add('visible');
+        }
+    </script>
+</body>
+
+</html>

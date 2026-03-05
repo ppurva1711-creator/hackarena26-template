@@ -1,0 +1,202 @@
+{
+  "examples": {
+
+    "POST /chat": {
+
+      "example_1_first_aid": {
+        "request": {
+          "message": "What should I do after a snakebite?",
+          "session_id": "user_abc_001"
+        },
+        "response": {
+          "intent": "first_aid",
+          "confidence": "high",
+          "response_type": "first_aid_guide",
+          "title": "🚨 Snakebite First Aid Instructions",
+          "content": {
+            "title": "🚨 Snakebite First Aid Instructions",
+            "dos": [
+              "Stay calm and keep the victim as still as possible",
+              "Remove jewellery, watches, and tight clothing near the bite",
+              "Immobilise the bitten limb with a splint or sling",
+              "Keep the bitten area at or below heart level",
+              "Transport the victim to the nearest hospital immediately",
+              "Note the time of bite and try to remember the snake's appearance",
+              "Call emergency services (112 / local emergency number) right away"
+            ],
+            "donts": [
+              "Do NOT cut the wound or attempt to suck out venom",
+              "Do NOT apply a tourniquet or tight bandage",
+              "Do NOT apply ice, heat, or any chemicals to the wound",
+              "Do NOT give alcohol, aspirin, or NSAIDs",
+              "Do NOT allow the victim to walk if avoidable",
+              "Do NOT waste time trying to catch or kill the snake",
+              "Do NOT apply electric shock therapy"
+            ],
+            "emergency_warning_signs": [
+              "Difficulty breathing or swallowing",
+              "Severe swelling spreading rapidly",
+              "Blurred vision or drooping eyelids",
+              "Muscle weakness or paralysis",
+              "Uncontrolled bleeding from the wound or elsewhere",
+              "Loss of consciousness or seizures",
+              "Severe chest or abdominal pain"
+            ]
+          },
+          "disclaimer": "⚠️ MEDICAL DISCLAIMER: This information is for emergency guidance only and does NOT replace professional medical advice. Always call emergency services and get to a hospital immediately after any snakebite."
+        }
+      },
+
+      "example_2_neurotoxic": {
+        "request": {
+          "message": "What are symptoms of neurotoxic venom?"
+        },
+        "response": {
+          "intent": "neurotoxic_symptoms",
+          "confidence": "high",
+          "response_type": "symptom_info",
+          "title": "🧠 Neurotoxic Venom — Symptoms & Signs",
+          "content": {
+            "venom_type": "Neurotoxic",
+            "snake_examples": ["Cobra", "Krait", "Mamba", "Coral Snake", "Sea Snake"],
+            "early_symptoms": [
+              "Drooping eyelids (ptosis) within 1–4 hours",
+              "Double or blurred vision",
+              "Difficulty speaking or swallowing",
+              "Excessive drooling or dry mouth",
+              "Weakness of facial muscles"
+            ],
+            "progressive_symptoms": [
+              "Descending muscle paralysis from head to limbs",
+              "Respiratory muscle weakness → breathing difficulty",
+              "Generalised body weakness",
+              "Nausea and vomiting"
+            ],
+            "critical_signs": [
+              "Respiratory failure (requires immediate ventilator support)",
+              "Complete flaccid paralysis",
+              "Cardiovascular collapse"
+            ],
+            "treatment_note": "Anti-venom is the definitive treatment. Seek hospital care immediately."
+          },
+          "disclaimer": "⚠️ MEDICAL DISCLAIMER: This information is for emergency guidance only..."
+        }
+      },
+
+      "example_3_dangerous_snake": {
+        "request": {
+          "message": "Is this snake dangerous?"
+        },
+        "response": {
+          "intent": "dangerous_snake",
+          "confidence": "high",
+          "response_type": "safety_assessment",
+          "title": "🐍 Is This Snake Dangerous?",
+          "content": {
+            "assessment_guide": {
+              "HIGH_DANGER — Seek immediate hospital care": [
+                "Triangular / arrow-shaped head",
+                "Visible fangs (front-fanged or rear-fanged)",
+                "Hood that spreads when threatened (cobra)",
+                "Rattle on the tail (rattlesnake)",
+                "Bright warning colours (coral snake pattern: red-yellow-black)",
+                "Very thick body relative to length",
+                "Slit / elliptical pupils"
+              ],
+              "LOWER_RISK — but still seek medical advice": [
+                "Rounded head with no visible fangs",
+                "Slender, smooth-scaled body",
+                "Round pupils",
+                "No distinctive markings"
+              ]
+            },
+            "important_note": "⚠️ IMPORTANT: Snake identification from appearance alone is unreliable. ALL snakebites should be treated as potentially dangerous until medically assessed."
+          },
+          "disclaimer": "⚠️ MEDICAL DISCLAIMER: ..."
+        }
+      }
+    },
+
+    "POST /nearby-hospitals": {
+
+      "request_osm": {
+        "latitude": 19.0760,
+        "longitude": 72.8777,
+        "radius_km": 5.0,
+        "max_results": 5,
+        "provider": "osm"
+      },
+
+      "request_google": {
+        "latitude": 19.0760,
+        "longitude": 72.8777,
+        "radius_km": 10.0,
+        "max_results": 10,
+        "provider": "google"
+      },
+
+      "response": {
+        "total_found": 3,
+        "radius_km": 5.0,
+        "user_location": {
+          "latitude": 19.076,
+          "longitude": 72.8777
+        },
+        "hospitals": [
+          {
+            "name": "KEM Hospital",
+            "address": "Acharya Donde Marg, Parel, Mumbai",
+            "phone": "+91-22-24136051",
+            "distance_km": 1.2,
+            "latitude": 19.0018,
+            "longitude": 72.8428,
+            "maps_url": "https://www.openstreetmap.org/?mlat=19.0018&mlon=72.8428#map=17/19.0018/72.8428",
+            "emergency": true
+          },
+          {
+            "name": "Wockhardt Hospital",
+            "address": "1877, Dr Anandrao Nair Marg, Mumbai Central",
+            "phone": "+91-22-61784444",
+            "distance_km": 2.7,
+            "latitude": 18.9726,
+            "longitude": 72.8223,
+            "maps_url": "https://www.openstreetmap.org/?mlat=18.9726&mlon=72.8223#map=17/18.9726/72.8223",
+            "emergency": true
+          },
+          {
+            "name": "Nair Hospital",
+            "address": "Dr A.L. Nair Road, Mumbai Central",
+            "phone": null,
+            "distance_km": 3.4,
+            "latitude": 18.9696,
+            "longitude": 72.8188,
+            "maps_url": "https://www.openstreetmap.org/?mlat=18.9696&mlon=72.8188#map=17/18.9696/72.8188",
+            "emergency": true
+          }
+        ],
+        "provider": "OpenStreetMap (Overpass API)",
+        "note": "Results sourced from OpenStreetMap community data. Contact details may be incomplete. In an emergency, call 112 immediately."
+      }
+    },
+
+    "POST /predict": {
+      "request": "multipart/form-data with file field (JPEG/PNG/WebP snake image)",
+      "response": {
+        "species": "Indian Cobra (Naja naja)",
+        "confidence": 0.9231,
+        "venom_type": "Neurotoxic",
+        "danger_level": "CRITICAL",
+        "first_aid": [
+          "Stay calm; immobilise the bitten limb",
+          "Remove jewellery/tight clothing near bite",
+          "Keep bite below heart level",
+          "Do NOT cut, suck, or tourniquet",
+          "Go to the nearest hospital IMMEDIATELY",
+          "Call emergency services: 112"
+        ],
+        "symptoms": ["Paralysis, drooping eyelids, breathing difficulty"],
+        "note": "Seek immediate medical attention regardless of species identification."
+      }
+    }
+  }
+}
